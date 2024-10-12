@@ -22,7 +22,7 @@ jobs:
       run: pip install -r requirements.txt
     - name: Fetch
       run: |   
-        curl -s "https://kubra.io/cluster-data/002/f738adb9-3478-457e-9af5-fc3b91ec6aec/e9a96a8c-1d46-402b-bfad-b5520c477f29/public/cluster-2/03200.json" \
+        curl -s "https://kubra.io/cluster-data/132/f738adb9-3478-457e-9af5-fc3b91ec6aec/d7eb6a1c-da69-468d-a6f7-769d594912e9/public/cluster-2/03200231.json" \
          | jq '.features | map({
             attributes: (.attributes | del(.blueSkyNotificationSubscription, .OBJECTID)),
             geometry_x: .geometry.x,
