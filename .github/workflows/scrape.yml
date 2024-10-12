@@ -1,0 +1,47 @@
+name: Fetch latest outages
+
+on:
+  push:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/10 * * * *'
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+    - name: Install Python tools
+      run: pip install -r requirements.txt
+    - name: Fetch
+      run: |
+        curl -s "https://kubra.io/cluster-data/002/f738adb9-3478-457e-9af5-fc3b91ec6aec/e9a96a8c-1d46-402b-bfad-b5520c477f29/public/cluster-2/03200.json" \
+          | jq '{file_title: .file_title, file_data: .file_data[] | {
+              id: .id,
+              title: .title,
+              n_out: .desc.n_out,
+              cust_a: .desc.cust_a.val,
+              etr: .desc.etr,
+              start_time: .desc.start_time,
+              geom_p: .geom.p
+          }}' \
+          > outages-new.json
+        head -n 20 outages-new.json
+        head -n 20 outages.json
+    - name: Generate commit message, commit and push
+      run: |-
+        csv-diff outages.json outages-new.json --key id --format json > message.txt
+        mv outages-new.json outages.json
+        git config user.name "Automated"
+        git config user.email "actions@users.noreply.github.com"
+        git add outages.json
+        git commit -F message.txt || exit 0
+        git pull --rebase
+        git push
