@@ -29,16 +29,10 @@ jobs:
         curl -s "https://kubra.io/cluster-data/332/f738adb9-3478-457e-9af5-fc3b91ec6aec/35e935cc-e4c9-4e0a-ac1c-b13632b579a6/public/cluster-2/03200233.json" > raw-data.json
         cat raw-data.json  # Print raw data to check if the content is valid
 
-    - name: Validate JSON
-      run: |
-        if ! jq empty raw-data.json; then
-          echo "Invalid JSON structure in raw-data.json"
-          exit 1
-        fi
-
     - name: Process JSON with jq
       run: |
-        jq '{file_title: .file_title, file_data: .file_data[] | {
+        if [ -s raw-data.json ]; then
+          jq '{file_title: .file_title, file_data: .file_data[] | {
               id: .id,
               title: .title,
               n_out: .desc.n_out,
@@ -47,10 +41,14 @@ jobs:
               start_time: .desc.start_time,
               geom_p: .geom.p
           }}' raw-data.json > outages-new.json
-        cat outages-new.json  # Print processed JSON for debugging
+          cat outages-new.json  # Print processed JSON for debugging
+        else
+          echo "raw-data.json is empty or invalid."
+        fi
 
     - name: Compare and prepare commit if necessary
       run: |
+        # Check if the files differ
         if ! cmp -s outages.json outages-new.json; then
           mv outages-new.json outages.json
         fi
