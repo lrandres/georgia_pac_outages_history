@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4  # Ensure this step is present to check out your repo.
+      uses: actions/checkout@v4
 
     - uses: actions/setup-python@v5
       with:
@@ -26,8 +26,9 @@ jobs:
 
     - name: Fetch data from URL
       run: |
-        curl -s "https://kubra.io/cluster-data/002/f738adb9-3478-457e-9af5-fc3b91ec6aec/e9a96a8c-1d46-402b-bfad-b5520c477f29/public/cluster-2/03200.json" \
-          | jq '{file_title: .file_title, file_data: .file_data[] | {
+        curl -s "https://kubra.io/cluster-data/002/f738adb9-3478-457e-9af5-fc3b91ec6aec/e9a96a8c-1d46-402b-bfad-b5520c477f29/public/cluster-2/03200.json" > raw-data.json
+        cat raw-data.json  # Print the raw JSON to the workflow logs for debugging
+        jq '{file_title: .file_title, file_data: .file_data[] | {
               id: .id,
               title: .title,
               n_out: .desc.n_out,
@@ -35,7 +36,8 @@ jobs:
               etr: .desc.etr,
               start_time: .desc.start_time,
               geom_p: .geom.p
-          }}' > outages-new.json
+          }}' raw-data.json > outages-new.json
+        cat outages-new.json  # Print the processed JSON to check for issues
 
     - name: Compare and prepare commit if necessary
       run: |
