@@ -26,8 +26,9 @@ jobs:
 
     - name: Fetch data from URL
       run: |
-        curl -s "https://kubra.io/cluster-data/332/f738adb9-3478-457e-9af5-fc3b91ec6aec/35e935cc-e4c9-4e0a-ac1c-b13632b579a6/public/cluster-2/03200233.json" > raw-data.json
-        cat raw-data.json  # Print raw data to check if the content is valid
+        curl -s "https://kubra.io/cluster-data/132/f738adb9-3478-457e-9af5-fc3b91ec6aec/d7eb6a1c-da69-468d-a6f7-769d594912e9/public/cluster-2/03200231.json" > raw-data.json
+        echo "Raw data fetched:"
+        cat raw-data.json  # Output the raw content for debugging
 
     - name: Process JSON with jq
       run: |
@@ -48,7 +49,6 @@ jobs:
 
     - name: Compare and prepare commit if necessary
       run: |
-        # Check if the files differ
         if ! cmp -s outages.json outages-new.json; then
           mv outages-new.json outages.json
         fi
