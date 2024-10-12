@@ -26,40 +26,22 @@ jobs:
 
     - name: Fetch data from URL
       run: |
-        curl -s "https://kubra.io/cluster-data/002/f738adb9-3478-457e-9af5-fc3b91ec6aec/e9a96a8c-1d46-402b-bfad-b5520c477f29/public/cluster-2/03200.json" > raw-data.json
-        cat raw-data.json  # Print the raw JSON to the workflow logs for debugging
-        jq '{file_title: .file_title, file_data: .file_data[] | {
-              id: .id,
-              title: .title,
-              n_out: .desc.n_out,
-              cust_a: .desc.cust_a.val,
-              etr: .desc.etr,
-              start_time: .desc.start_time,
-              geom_p: .geom.p
-          }}' raw-data.json > outages-new.json
-        cat outages-new.json  # Print the processed JSON to check for issues
-
-    - name: Compare and prepare commit if necessary
-      run: |
-        # Check if the files differ
-        if ! cmp -s outages.json outages-new.json; then
-          mv outages-new.json outages.json
-        fi
-
-    - name: Generate commit message, commit, and push
-      run: |
-        git config user.name "Automated Commit Bot"
+        curl -s "https://kubra.io/cluster-data/002/f738adb9-3478-457e-9af5-fc3b91ec6aec/e9a96a8c-1d46-402b-bfad-b5520c477f29/public/cluster-2/03200.json" \
+         | jq '.features | map({
+            attributes: (.attributes | del(.blueSkyNotificationSubscription, .OBJECTID)),
+            geometry_x: .geometry.x,
+            geometry_y: .geometry.y
+          } | .attributes + {geometry_x: .geometry_x, geometry_y: .geometry_y})' \
+         > outages-new.json
+        head -n 20 outages-new.json
+        head -n 20 outages.json
+    - name: Generate commit message, commit and push
+      run: |-
+        csv-diff outages.json outages-new.json --key F_OUTAGE_ID --format json > message.txt
+        mv outages-new.json outages.json
+        git config user.name "Automated"
         git config user.email "actions@users.noreply.github.com"
-        
-        # Stage the file and commit if changes detected
         git add outages.json
-        
-        # Create a commit message with a timestamp
-        timestamp=$(date -u)
-        git commit -m "Update outages data: $timestamp" || exit 0
-        
-        # Pull and rebase to avoid conflicts, then push
+        git commit -F message.txt || exit 0
         git pull --rebase
         git push
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
