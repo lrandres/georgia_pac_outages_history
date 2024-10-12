@@ -4,7 +4,7 @@ on:
   push:
   workflow_dispatch:
   schedule:
-    - cron: '*/10 * * * *'
+  - cron: '*/10 * * * *'
 
 permissions:
   contents: write
@@ -13,60 +13,31 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
+    - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
       with:
         python-version: '3.12'
         cache: 'pip'
-
     - name: Install Python tools
       run: pip install -r requirements.txt
-
-    - name: Fetch data from URL
-      run: |
-        curl -s "https://kubra.io/cluster-data/132/f738adb9-3478-457e-9af5-fc3b91ec6aec/d7eb6a1c-da69-468d-a6f7-769d594912e9/public/cluster-2/03200231.json" > raw-data.json
-        echo "Raw data fetched:"
-        cat raw-data.json  # Output the raw content for debugging
-
-    - name: Process JSON with jq
-      run: |
-        if [ -s raw-data.json ]; then
-          jq '{file_title: .file_title, file_data: .file_data[] | {
-              id: .id,
-              title: .title,
-              n_out: .desc.n_out,
-              cust_a: .desc.cust_a.val,
-              etr: .desc.etr,
-              start_time: .desc.start_time,
-              geom_p: .geom.p
-          }}' raw-data.json > outages-new.json
-          cat outages-new.json  # Print processed JSON for debugging
-        else
-          echo "raw-data.json is empty or invalid."
-        fi
-
-    - name: Compare and prepare commit if necessary
-      run: |
-        if ! cmp -s outages.json outages-new.json; then
-          mv outages-new.json outages.json
-        fi
-
-    - name: Generate commit message, commit, and push
-      run: |
-        git config user.name "Automated Commit Bot"
+    - name: Fetch
+      run: |        
+        curl -s "https://ags.pge.esriemcs.com/arcgis/rest/services/43/outages/MapServer/5/query?where=1%3D1&outFields=*&f=pjson&_$(uuidgen)" \
+          | jq '.features | map({
+            attributes: (.attributes | del(.blueSkyNotificationSubscription, .OBJECTID)),
+            geometry_x: .geometry.x,
+            geometry_y: .geometry.y
+          } | .attributes + {geometry_x: .geometry_x, geometry_y: .geometry_y})' \
+          > outages-new.json
+        head -n 20 outages-new.json
+        head -n 20 outages.json
+    - name: Generate commit message, commit and push
+      run: |-
+        csv-diff outages.json outages-new.json --key F_OUTAGE_ID --format json > message.txt
+        mv outages-new.json outages.json
+        git config user.name "Automated"
         git config user.email "actions@users.noreply.github.com"
-        
-        # Stage the file and commit if changes detected
         git add outages.json
-        
-        # Create a commit message with a timestamp
-        timestamp=$(date -u)
-        git commit -m "Update outages data: $timestamp" || exit 0
-        
-        # Pull and rebase to avoid conflicts, then push
+        git commit -F message.txt || exit 0
         git pull --rebase
         git push
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
