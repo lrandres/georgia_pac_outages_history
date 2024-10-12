@@ -13,19 +13,15 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
+    - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
       with:
         python-version: '3.12'
         cache: 'pip'
-
     - name: Install Python tools
       run: pip install -r requirements.txt
-
-    - name: Fetch data from URL
-      run: |
+    - name: Fetch
+      run: |   
         curl -s "https://kubra.io/cluster-data/002/f738adb9-3478-457e-9af5-fc3b91ec6aec/e9a96a8c-1d46-402b-bfad-b5520c477f29/public/cluster-2/03200.json" \
          | jq '.features | map({
             attributes: (.attributes | del(.blueSkyNotificationSubscription, .OBJECTID)),
